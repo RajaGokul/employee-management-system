@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Employee Management Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+
+    <div class="container">
+
+        <a class="navbar-brand" href="/">Employee Management System</a>
+
+        <div>
+
+            <a th:href="@{/employees/new}" class="btn btn-success">
+                Add Employee
+            </a>
+
+        </div>
+
+    </div>
+
+</nav>
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">
+        Dashboard
+    </h2>
+
+    <div class="row">
+
+        <div class="col-md-4">
+
+            <div class="card text-center shadow">
+
+                <div class="card-body">
+
+                    <h5>Total Employees</h5>
+
+                    <h1 th:text="${totalEmployees}"></h1>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="card text-center shadow border-success">
+
+                <div class="card-body">
+
+                    <h5>Active Employees</h5>
+
+                    <h1 class="text-success"
+                        th:text="${activeEmployees}">
+                    </h1>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-md-4">
+
+            <div class="card text-center shadow border-danger">
+
+                <div class="card-body">
+
+                    <h5>Inactive Employees</h5>
+
+                    <h1 class="text-danger"
+                        th:text="${inactiveEmployees}">
+                    </h1>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card shadow mt-5">
+
+        <div class="card-header bg-primary text-white">
+
+            <h4 class="mb-0">
+
+                Employee Directory
+
+            </h4>
+
+        </div>
+
+        <div class="card-body">
+
+            <table class="table table-bordered table-hover">
+
+                <thead class="table-dark">
+
+                <tr>
+
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Salary</th>
+                    <th>Status</th>
+                    <th>Action</th>
+
+                </tr>
+
+                </thead>
+
+                <tbody>
+
+                <tr th:each="employee : ${employees}">
+
+                    <td th:text="${employee.employeeId}"></td>
+
+                    <td th:text="${employee.firstName + ' ' + employee.lastName}"></td>
+
+                    <td th:text="${employee.email}"></td>
+
+                    <td th:text="${employee.department}"></td>
+
+                    <td th:text="${employee.designation}"></td>
+
+                    <td th:text="${employee.salary}"></td>
+
+                    <td>
+
+                        <span class="badge bg-success"
+                              th:if="${employee.status=='ACTIVE'}">
+
+                            ACTIVE
+
+                        </span>
+
+                        <span class="badge bg-danger"
+                              th:if="${employee.status=='INACTIVE'}">
+
+                            INACTIVE
+
+                        </span>
+
+                    </td>
+
+                    <td>
+
+                        <a class="btn btn-warning btn-sm"
+                           th:href="@{/employees/edit/{id}(id=${employee.employeeId})}">
+
+                            Edit
+
+                        </a>
+
+                        <a class="btn btn-danger btn-sm"
+                           th:href="@{/employees/delete/{id}(id=${employee.employeeId})}">
+
+                            Delete
+
+                        </a>
+
+                    </td>
+
+                </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>
