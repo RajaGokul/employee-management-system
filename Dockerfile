@@ -1,5 +1,3 @@
-ENTRYPOINT ["java","-jar","app.jar"]
-
 FROM eclipse-temurin:21-jre
 
 LABEL maintainer="Raja Gokul"
