@@ -1,50 +1,158 @@
 pipeline {
+
     agent {
         label 'build-agent'
     }
 
-    tools {
-        jdk 'JDK21'
-        maven 'Maven3'
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
     environment {
+        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
+        PATH = "/usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/share/maven/bin:${env.PATH}"
+
         APP_NAME = 'employee-management-system'
+        IMAGE_NAME = 'raja62533/employee-management-system'
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
 
+        stage('Initialize') {
+            steps {
+                script {
+                    currentBuild.displayName = "#${BUILD_NUMBER}"
+                    currentBuild.description = "Version ${BUILD_NUMBER}"
+                }
+
+                echo "Application : ${APP_NAME}"
+                echo "Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+            }
+        }
+
+        stage('Verify Build Environment') {
+            steps {
+                sh '''
+                    echo "===== Build Environment ====="
+                    hostname
+                    whoami
+                    pwd
+                    java -version
+                    mvn -version
+                    git --version
+                    docker --version
+                    trivy --version
+                '''
+            }
+        }
+
         stage('Checkout') {
             steps {
-                echo 'Checking out source code...'
                 checkout scm
             }
         }
 
         stage('Compile') {
             steps {
-                echo 'Compiling application...'
                 sh 'mvn clean compile'
             }
         }
 
         stage('Unit Test') {
             steps {
-                echo 'Running unit tests...'
                 sh 'mvn test'
             }
         }
 
         stage('Package') {
             steps {
-                echo 'Packaging application...'
                 sh 'mvn package -DskipTests'
             }
         }
 
+        /*
+        =====================================================
+                    ENABLE AFTER SONARCLOUD IS BACK
+        =====================================================
+
+        stage('SonarCloud Analysis') {
+            steps {
+                withSonarQubeEnv('SonarCloud') {
+                    sh '''
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=RajaGokul_employee-management-system \
+                    -Dsonar.organization=rajagokul
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        =====================================================
+        */
+
         stage('Archive Artifact') {
             steps {
                 archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh '''
+                docker build \
+                -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                -t ${IMAGE_NAME}:latest .
+                '''
+            }
+        }
+
+        stage('Trivy Scan') {
+            steps {
+                sh '''
+                trivy image \
+                --exit-code 1 \
+                --severity HIGH,CRITICAL \
+                ${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Docker Login') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+
+                    sh '''
+                    echo "$DOCKER_PASS" | docker login \
+                    -u "$DOCKER_USER" \
+                    --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                sh '''
+                docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                docker push ${IMAGE_NAME}:latest
+                '''
             }
         }
     }
@@ -52,11 +160,11 @@ pipeline {
     post {
 
         success {
-            echo 'Build completed successfully.'
+            echo "Build Successful"
         }
 
         failure {
-            echo 'Build failed.'
+            echo "Build Failed"
         }
 
         always {
@@ -64,4 +172,3 @@ pipeline {
         }
     }
 }
-
