@@ -158,7 +158,39 @@ pipeline {
                 docker push ${IMAGE_NAME}:latest
                 '''
             }
+        
+	}
+
+	stage('Deploy to Application Server') {
+    steps {
+        withCredentials([
+            string(credentialsId: 'app-server-ip', variable: 'APP_SERVER')
+        ]) {
+            sshagent(credentials: ['build_agent_ssh']) {
+                sh '''
+                ssh -o StrictHostKeyChecking=no jenkins@$APP_SERVER << EOF
+
+                echo "===== Deploying Application ====="
+
+                docker pull ${IMAGE_NAME}:${IMAGE_TAG}
+
+                docker stop employee-management-system || true
+                docker rm employee-management-system || true
+
+                docker run -d \
+                    --name employee-management-system \
+                    --restart unless-stopped \
+                    -p 8080:8080 \
+                    ${IMAGE_NAME}:${IMAGE_TAG}
+
+                docker ps
+
+                EOF
+                '''
+            }
         }
+    }
+}
     }
 
     post {
@@ -187,3 +219,4 @@ pipeline {
         }
     }
 }
+
