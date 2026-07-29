@@ -96,6 +96,23 @@ pipeline {
             }
         }
 
+	stage('Quality Gate') {
+    steps {
+        timeout(time: 5, unit: 'MINUTES') {
+            script {
+                def qualityGate = waitForQualityGate()
+
+                if (qualityGate.status != 'OK') {
+                    echo "Quality Gate Status: ${qualityGate.status}"
+                    echo "Proceeding with the pipeline for this DevOps learning project."
+                } else {
+                    echo "Quality Gate Passed."
+                }
+            }
+        }
+    }
+}
+
         stage('Package') {
             steps {
                 sh 'mvn package -DskipTests'
@@ -184,3 +201,4 @@ pipeline {
         }
     }
 }
+
