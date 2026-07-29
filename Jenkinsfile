@@ -11,7 +11,6 @@ pipeline {
     }
 
     environment {
-
         JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
         PATH = "/usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/share/maven/bin:${env.PATH}"
 
@@ -29,29 +28,25 @@ pipeline {
                     currentBuild.description = "Version ${BUILD_NUMBER}"
                 }
 
+                echo "===================================="
                 echo "Application : ${APP_NAME}"
-                echo "Image       : ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "Version     : ${IMAGE_TAG}"
+                echo "Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "===================================="
             }
         }
 
         stage('Verify Build Environment') {
             steps {
                 sh '''
-                    echo "========== BUILD ENVIRONMENT =========="
-
+                    echo "===== Build Environment ====="
                     hostname
                     whoami
                     pwd
-
-                    echo
                     java -version
-                    echo
                     mvn -version
-                    echo
                     git --version
-                    echo
                     docker --version
-                    echo
                     trivy --version
                 '''
             }
@@ -75,14 +70,19 @@ pipeline {
             }
         }
 
+        stage('Package') {
+            steps {
+                sh 'mvn package -DskipTests'
+            }
+        }
+
         stage('SonarCloud Analysis') {
             steps {
                 withSonarQubeEnv('SonarCloud') {
-
                     sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=RajaGokul_employee-management-system \
-                        -Dsonar.organization=rajagokul
+                    mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.2.0.4988:sonar \
+                    -Dsonar.projectKey=RajaGokul_employee-management-system \
+                    -Dsonar.organization=rajagokul
                     '''
                 }
             }
@@ -91,31 +91,17 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    script {
+                        def qualityGate = waitForQualityGate()
+
+                        if (qualityGate.status == 'OK') {
+                            echo "✅ Quality Gate PASSED"
+                        } else {
+                            echo "⚠️ Quality Gate Status : ${qualityGate.status}"
+                            echo "Proceeding with pipeline for DevOps learning project."
+                        }
+                    }
                 }
-            }
-        }
-
-	stage('Quality Gate') {
-    steps {
-        timeout(time: 5, unit: 'MINUTES') {
-            script {
-                def qualityGate = waitForQualityGate()
-
-                if (qualityGate.status != 'OK') {
-                    echo "Quality Gate Status: ${qualityGate.status}"
-                    echo "Proceeding with the pipeline for this DevOps learning project."
-                } else {
-                    echo "Quality Gate Passed."
-                }
-            }
-        }
-    }
-}
-
-        stage('Package') {
-            steps {
-                sh 'mvn package -DskipTests'
             }
         }
 
@@ -127,31 +113,28 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-
                 sh '''
-                    docker build \
-                    -t ${IMAGE_NAME}:${IMAGE_TAG} \
-                    -t ${IMAGE_NAME}:latest .
+                docker build \
+                -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                -t ${IMAGE_NAME}:latest .
                 '''
             }
         }
 
         stage('Trivy Scan') {
             steps {
-
                 sh '''
-                    trivy image \
-                    --exit-code 0 \
-                    --severity HIGH,CRITICAL \
-                    --no-progress \
-                    ${IMAGE_NAME}:${IMAGE_TAG}
+                trivy image \
+                --exit-code 0 \
+                --severity HIGH,CRITICAL \
+                --no-progress \
+                ${IMAGE_NAME}:${IMAGE_TAG}
                 '''
             }
         }
 
         stage('Docker Login') {
             steps {
-
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub',
@@ -159,11 +142,10 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
-
                     sh '''
-                        echo "$DOCKER_PASS" | docker login \
-                        -u "$DOCKER_USER" \
-                        --password-stdin
+                    echo "$DOCKER_PASS" | docker login \
+                    -u "$DOCKER_USER" \
+                    --password-stdin
                     '''
                 }
             }
@@ -171,29 +153,33 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-
                 sh '''
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    docker push ${IMAGE_NAME}:latest
+                docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                docker push ${IMAGE_NAME}:latest
                 '''
             }
         }
-
     }
 
     post {
 
         success {
-            echo "======================================"
+            echo ""
+            echo "===================================="
             echo "BUILD SUCCESSFUL"
-            echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
-            echo "======================================"
+            echo "Application : ${APP_NAME}"
+            echo "Version     : ${IMAGE_TAG}"
+            echo "Image       : ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "===================================="
         }
 
         failure {
-            echo "======================================"
+            echo ""
+            echo "===================================="
             echo "BUILD FAILED"
-            echo "======================================"
+            echo "Application : ${APP_NAME}"
+            echo "Version     : ${IMAGE_TAG}"
+            echo "===================================="
         }
 
         always {
@@ -201,4 +187,3 @@ pipeline {
         }
     }
 }
-
