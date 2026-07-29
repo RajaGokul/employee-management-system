@@ -11,6 +11,7 @@ pipeline {
     }
 
     environment {
+
         JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
         PATH = "/usr/lib/jvm/java-21-openjdk-amd64/bin:/usr/share/maven/bin:${env.PATH}"
 
@@ -29,22 +30,28 @@ pipeline {
                 }
 
                 echo "Application : ${APP_NAME}"
-                echo "Docker Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "Image       : ${IMAGE_NAME}:${IMAGE_TAG}"
             }
         }
 
         stage('Verify Build Environment') {
             steps {
                 sh '''
-                    echo "===== Build Environment ====="
+                    echo "========== BUILD ENVIRONMENT =========="
+
                     hostname
                     whoami
                     pwd
 
+                    echo
                     java -version
+                    echo
                     mvn -version
+                    echo
                     git --version
+                    echo
                     docker --version
+                    echo
                     trivy --version
                 '''
             }
@@ -68,6 +75,27 @@ pipeline {
             }
         }
 
+        stage('SonarCloud Analysis') {
+            steps {
+                withSonarQubeEnv('SonarCloud') {
+
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=RajaGokul_employee-management-system \
+                        -Dsonar.organization=rajagokul
+                    '''
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
         stage('Package') {
             steps {
                 sh 'mvn package -DskipTests'
@@ -82,28 +110,31 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh """
+
+                sh '''
                     docker build \
                     -t ${IMAGE_NAME}:${IMAGE_TAG} \
                     -t ${IMAGE_NAME}:latest .
-                """
+                '''
             }
         }
 
         stage('Trivy Scan') {
             steps {
-                sh """
+
+                sh '''
                     trivy image \
                     --exit-code 0 \
                     --severity HIGH,CRITICAL \
                     --no-progress \
                     ${IMAGE_NAME}:${IMAGE_TAG}
-                """
+                '''
             }
         }
 
         stage('Docker Login') {
             steps {
+
                 withCredentials([
                     usernamePassword(
                         credentialsId: 'dockerhub',
@@ -111,8 +142,11 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )
                 ]) {
+
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
                     '''
                 }
             }
@@ -120,10 +154,11 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                sh """
+
+                sh '''
                     docker push ${IMAGE_NAME}:${IMAGE_TAG}
                     docker push ${IMAGE_NAME}:latest
-                """
+                '''
             }
         }
 
@@ -132,16 +167,16 @@ pipeline {
     post {
 
         success {
-            echo "===================================="
-            echo "Build Successful"
+            echo "======================================"
+            echo "BUILD SUCCESSFUL"
             echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
-            echo "===================================="
+            echo "======================================"
         }
 
         failure {
-            echo "===================================="
-            echo "Build Failed"
-            echo "===================================="
+            echo "======================================"
+            echo "BUILD FAILED"
+            echo "======================================"
         }
 
         always {
