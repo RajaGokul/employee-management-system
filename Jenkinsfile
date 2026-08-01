@@ -168,7 +168,7 @@ pipeline {
         ]) {
             sshagent(credentials: ['build_agent_ssh']) {
                 sh '''
-                ssh -o StrictHostKeyChecking=no jenkins@$APP_SERVER <<EOF
+                ssh -o StrictHostKeyChecking=no jenkins@$APP_SERVER
 
                 echo "===== Deploying Application ====="
 
@@ -186,7 +186,6 @@ pipeline {
 
                 docker ps
 
-                EOF
                 '''
             }
         }
