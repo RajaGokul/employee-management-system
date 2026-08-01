@@ -168,7 +168,7 @@ pipeline {
         ]) {
             sshagent(credentials: ['build_agent_ssh']) {
                 sh '''
-                ssh -o StrictHostKeyChecking=no jenkins@$APP_SERVER << EOF
+                ssh -o StrictHostKeyChecking=no jenkins@$APP_SERVER <<EOF
 
                 echo "===== Deploying Application ====="
 
