@@ -195,24 +195,34 @@ pipeline {
 
     post {
 
-        success {
-            echo ""
-            echo "===================================="
-            echo "BUILD SUCCESSFUL"
-            echo "Application : ${APP_NAME}"
-            echo "Version     : ${IMAGE_TAG}"
-            echo "Image       : ${IMAGE_NAME}:${IMAGE_TAG}"
-            echo "===================================="
-        }
+    success {
+        emailext(
+            subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """
+                <h2>Build Successful</h2>
+                <p><b>Project:</b> ${env.JOB_NAME}</p>
+                <p><b>Build:</b> ${env.BUILD_NUMBER}</p>
+                <p><b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+            """,
+            mimeType: 'text/html',
+            to: 'krajagokul58@gmail.com'
+        )
+    }
 
-        failure {
-            echo ""
-            echo "===================================="
-            echo "BUILD FAILED"
-            echo "Application : ${APP_NAME}"
-            echo "Version     : ${IMAGE_TAG}"
-            echo "===================================="
-        }
+    failure {
+        emailext(
+            subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """
+                <h2>Build Failed</h2>
+                <p><b>Project:</b> ${env.JOB_NAME}</p>
+                <p><b>Build:</b> ${env.BUILD_NUMBER}</p>
+                <p><b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+            """,
+            mimeType: 'text/html',
+            to: 'krajagokul58@gmail.com'
+        )
+    }
+
 
         always {
             cleanWs()
