@@ -180,6 +180,7 @@ pipeline {
                 docker run -d \
                     --name employee-management-system \
                     --restart unless-stopped \
+		    --add-host=host.docker.internal:host-gateway \
                     -p 8080:8080 \
                     ${IMAGE_NAME}:${IMAGE_TAG}
 
